@@ -27,3 +27,12 @@ React com Vite e TypeScript/JavaScript mínimo, sem serviços de backend. Estrut
 ## Restrições
 
 Manter uma tela inicial principal, sem implementar painel de produção, autenticação verdadeira, cadastros persistentes ou indicadores analíticos. Não usar nomes, contatos ou qualquer dado real de beneficiários. O botão central poderá abrir diálogo de protótipo, mas não deverá sugerir que uma entrega real foi efetuada. A captura de entrega será da tela inicial, não da tela modal.
+
+
+## Evolução incremental autorizada
+
+1. Extrair a regra de quantidade para um módulo testável e ajustar a confirmação para refletir beneficiário, item e saldo selecionados; a demonstração continua usando dados fictícios, sem persistência nem backend.
+2. Cobrir a regra com o test runner nativo do Node 22 (`node:test` e `--experimental-strip-types`), sem adicionar dependências, incluindo quantidade mínima e máxima válidas, zero, negativos, decimais, campo vazio e quantidade acima do saldo.
+3. Acrescentar `README.md` com requisitos de execução, comandos de instalação/desenvolvimento/build/teste, tecnologias e limites do protótipo (sem backend, banco ou gravação real).
+
+Cada incremento será registrado em um commit separado e descritivo. Capturas locais não versionadas permanecerão fora dos commits.

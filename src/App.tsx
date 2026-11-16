@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import BrandMark from './components/BrandMark';
 import FigmaFrame from './components/FigmaFrame';
 import { Icon } from './components/Icons';
+import { validateDeliveryQuantity } from './domain/deliveryRules';
 
 type NavigationItem = {
   label: string;
@@ -22,6 +23,17 @@ const demoActivity = [
   { icon: 'stay' as const, title: 'Hospedagem organizada', detail: 'Família Exemplo 2 · Quarto 02', time: 'Ontem, 14:15', tone: 'amber' },
 ];
 
+const demoBeneficiaries = [
+  { id: 'ana', name: 'Ana Exemplo', family: 'Família Exemplo' },
+  { id: 'joao', name: 'João Exemplo', family: 'Família Exemplo 2' },
+] as const;
+
+const demoItems = [
+  { id: 'cesta', label: 'Cesta básica', availableStock: 5 },
+  { id: 'leite', label: 'Leite integral', availableStock: 8 },
+  { id: 'medicamento', label: 'Medicamento demonstrativo', availableStock: 3 },
+] as const;
+
 function App() {
   const [activeItem, setActiveItem] = useState('Visão geral');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -29,11 +41,16 @@ function App() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [quantity, setQuantity] = useState('1');
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState('ana');
+  const [selectedItem, setSelectedItem] = useState('cesta');
   const [formError, setFormError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const hasOpenedDialog = useRef(false);
+  const selectedBeneficiaryDetails = demoBeneficiaries.find((beneficiary) => beneficiary.id === selectedBeneficiary) ?? demoBeneficiaries[0];
+  const selectedItemDetails = demoItems.find((item) => item.id === selectedItem) ?? demoItems[0];
+  const remainingStock = selectedItemDetails.availableStock - Number(quantity);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -51,10 +68,16 @@ function App() {
     }
   }, [dialogOpen, showResult]);
 
-  function openDelivery() {
+  function resetSimulation() {
     setQuantity('1');
+    setSelectedBeneficiary('ana');
+    setSelectedItem('cesta');
     setFormError('');
     setShowResult(false);
+  }
+
+  function openDelivery() {
+    resetSimulation();
     setDialogOpen(true);
     setNotice('');
   }
@@ -82,13 +105,9 @@ function App() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const requested = Number(quantity);
-    if (!Number.isInteger(requested) || requested < 1) {
-      setFormError('Informe uma quantidade inteira maior que zero.');
-      return;
-    }
-    if (requested > 5) {
-      setFormError('O saldo demonstrativo é de 5 unidades. Reduza a quantidade para continuar.');
+    const validation = validateDeliveryQuantity(quantity, selectedItemDetails.availableStock);
+    if (!validation.valid) {
+      setFormError(validation.message);
       return;
     }
     setFormError('');
@@ -272,22 +291,19 @@ function App() {
                 <p className="dialog-description">Confira as informações antes de simular a saída do benefício.</p>
                 <form onSubmit={handleSubmit} noValidate>
                   <label htmlFor="demo-beneficiary">Beneficiário</label>
-                  <select id="demo-beneficiary" defaultValue="ana" autoFocus>
-                    <option value="ana">Ana Exemplo · Família Exemplo</option>
-                    <option value="joao">João Exemplo · Família Exemplo 2</option>
+                  <select id="demo-beneficiary" value={selectedBeneficiary} onChange={(event) => { setSelectedBeneficiary(event.target.value); setFormError(''); }} autoFocus>
+                    {demoBeneficiaries.map((beneficiary) => <option key={beneficiary.id} value={beneficiary.id}>{beneficiary.name} · {beneficiary.family}</option>)}
                   </select>
                   <label htmlFor="demo-item">Item</label>
-                  <select id="demo-item" defaultValue="cesta">
-                    <option value="cesta">Cesta básica</option>
-                    <option value="leite">Leite integral</option>
-                    <option value="medicamento">Medicamento demonstrativo</option>
+                  <select id="demo-item" value={selectedItem} onChange={(event) => { setSelectedItem(event.target.value); setFormError(''); }}>
+                    {demoItems.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                   </select>
                   <div className="quantity-row">
                     <label htmlFor="demo-quantity">Quantidade</label>
-                    <span>Saldo disponível: <strong>5 unidades</strong></span>
+                    <span>Saldo disponível: <strong>{selectedItemDetails.availableStock} unidades</strong></span>
                   </div>
-                  <input id="demo-quantity" type="number" min="1" max="5" step="1" value={quantity} onChange={(event) => { setQuantity(event.target.value); setFormError(''); }} aria-describedby={formError ? 'quantity-error' : 'quantity-help'} aria-invalid={Boolean(formError)} />
-                  {formError ? <p id="quantity-error" className="field-error" role="alert"><span aria-hidden="true">!</span>{formError}</p> : <p id="quantity-help" className="field-help">A simulação aceita de 1 a 5 unidades.</p>}
+                  <input id="demo-quantity" type="number" min="1" max={selectedItemDetails.availableStock} step="1" value={quantity} onChange={(event) => { setQuantity(event.target.value); setFormError(''); }} aria-describedby={formError ? 'quantity-error' : 'quantity-help'} aria-invalid={Boolean(formError)} />
+                  {formError ? <p id="quantity-error" className="field-error" role="alert"><span aria-hidden="true">!</span>{formError}</p> : <p id="quantity-help" className="field-help">A simulação aceita de 1 a {selectedItemDetails.availableStock} unidades.</p>}
                   <div className="demo-disclaimer"><span aria-hidden="true">ⓘ</span><p>Esta é uma demonstração. Nenhuma informação será salva.</p></div>
                   <div className="dialog-actions">
                     <button type="button" className="secondary-button" onClick={closeDelivery}>Cancelar</button>
@@ -300,12 +316,12 @@ function App() {
                 <span className="result-check"><Icon name="check" size={27} /></span>
                 <p className="dialog-eyebrow">SIMULAÇÃO CONCLUÍDA</p>
                 <h2 id="result-heading" tabIndex={-1}>Simulação de entrega concluída</h2>
-                <p className="dialog-description">{quantity} {Number(quantity) === 1 ? 'unidade' : 'unidades'} de cesta básica para Ana Exemplo.</p>
-                <div className="result-stock"><span>Saldo demonstrativo atualizado</span><strong>{5 - Number(quantity)} unidades</strong></div>
+                <p className="dialog-description">{quantity} {Number(quantity) === 1 ? 'unidade' : 'unidades'} de {selectedItemDetails.label} para {selectedBeneficiaryDetails.name}.</p>
+                <div className="result-stock"><span>Saldo demonstrativo atualizado</span><strong>{remainingStock} {remainingStock === 1 ? 'unidade' : 'unidades'}</strong></div>
                 <p className="result-note">Nenhum dado foi gravado. Esta confirmação existe apenas no protótipo.</p>
                 <div className="dialog-actions result-actions">
                   <button type="button" className="secondary-button" onClick={closeDelivery}>Voltar ao painel</button>
-                  <button type="button" className="primary-button dialog-submit" onClick={() => { setShowResult(false); setQuantity('1'); setFormError(''); }}>Nova simulação</button>
+                  <button type="button" className="primary-button dialog-submit" onClick={resetSimulation}>Nova simulação</button>
                 </div>
               </div>
             )}
