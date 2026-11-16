@@ -34,3 +34,21 @@ test('rejeita quantidade maior que o saldo do item', () => {
     message: 'O saldo demonstrativo é de 3 unidades. Reduza a quantidade para continuar.',
   });
 });
+
+for (const availableStock of [-1, 1.5, Number.NaN]) {
+  test(`rejeita saldo demonstrativo inválido ${String(availableStock)}`, () => {
+    assert.deepEqual(validateDeliveryQuantity('1', availableStock), {
+      valid: false,
+      reason: 'invalid-stock',
+      message: 'O saldo demonstrativo deste item está indisponível.',
+    });
+  });
+}
+
+test('trata saldo zero como válido, porém insuficiente para uma entrega positiva', () => {
+  assert.deepEqual(validateDeliveryQuantity('1', 0), {
+    valid: false,
+    reason: 'insufficient-stock',
+    message: 'O saldo demonstrativo é de 0 unidades. Reduza a quantidade para continuar.',
+  });
+});
